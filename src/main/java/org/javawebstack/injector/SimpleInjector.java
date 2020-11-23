@@ -6,7 +6,7 @@ import java.util.Map;
 
 public class SimpleInjector implements Injector {
 
-    private final Map<Class<?>, Object> instances = new HashMap<>();
+    private final Map<Class<?>, Map<String, Object>> instances = new HashMap<>();
 
     public <T> T inject(T object) {
         inject(object.getClass(), object);
@@ -17,27 +17,47 @@ public class SimpleInjector implements Injector {
         if(clazz.getSuperclass() != null && !Object.class.equals(clazz.getSuperclass()))
             inject(clazz.getSuperclass(), object);
         for(Field field : clazz.getDeclaredFields()){
-            if(field.getDeclaredAnnotationsByType(Inject.class).length != 0){
+            Inject[] injects = field.getDeclaredAnnotationsByType(Inject.class);
+            if(injects.length != 0){
                 if(instances.containsKey(field.getType())){
                     try {
                         field.setAccessible(true);
-                        field.set(object, getInstance(field.getType()));
+                        field.set(object, getInstance(field.getType(), injects[0].value()));
                     } catch (IllegalAccessException ignored) {}
                 }
             }
         }
     }
 
-    public <T> T getInstance(Class<T> clazz) {
-        return (T) instances.get(clazz);
+    public <T> T getInstance(Class<T> clazz){
+        return getInstance(clazz, "");
     }
 
-    public <T> void setInstance(Class<T> clazz, T instance) {
-        setInstanceUnsafe(clazz, instance);
+    public <T> T getInstance(Class<T> clazz, String name) {
+        if(!instances.containsKey(clazz))
+            return null;
+        Map<String, Object> values = instances.get(clazz);
+        if(!values.containsKey(name))
+            return null;
+        return (T) values.get(name);
+    }
+
+    public <T> void setInstance(Class<T> clazz, T instance){
+        setInstance(clazz, "", instance);
+    }
+
+    public <T> void setInstance(Class<T> clazz, String name, T instance) {
+        setInstanceUnsafe(clazz, name, instance);
     }
 
     public void setInstanceUnsafe(Class<?> clazz, Object instance){
-        instances.put(clazz, instance);
+        setInstanceUnsafe(clazz, "", instance);
+    }
+
+    public void setInstanceUnsafe(Class<?> clazz, String name, Object instance){
+        Map<String, Object> values = instances.containsKey(clazz) ? instances.get(clazz) : new HashMap<>();
+        values.put(name, instance);
+        instances.put(clazz, values);
     }
 
 }
