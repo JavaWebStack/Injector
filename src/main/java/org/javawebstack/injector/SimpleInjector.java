@@ -58,6 +58,7 @@ public class SimpleInjector implements Injector {
         Map<String, Object> values = instances.containsKey(clazz) ? instances.get(clazz) : new HashMap<>();
         values.put(name, instance);
         instances.put(clazz, values);
+        inject(instance);
     }
 
 }
