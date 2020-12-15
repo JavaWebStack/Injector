@@ -23,7 +23,9 @@ public class SimpleInjector implements Injector {
                     try {
                         field.setAccessible(true);
                         field.set(object, getInstance(field.getType(), injects[0].value()));
-                    } catch (IllegalAccessException ignored) {}
+                    } catch (IllegalAccessException ignored) {
+                        ignored.printStackTrace();
+                    }
                 }
             }
         }
