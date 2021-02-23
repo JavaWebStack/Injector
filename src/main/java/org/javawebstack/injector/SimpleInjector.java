@@ -1,6 +1,10 @@
 package org.javawebstack.injector;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Parameter;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,6 +15,40 @@ public class SimpleInjector implements Injector {
     public <T> T inject(T object) {
         inject(object.getClass(), object);
         return object;
+    }
+
+    public <T> T make(Class<T> clazz) {
+        Constructor<T> target = getTargetConstructor(clazz);
+        if (target == null)
+            return null;
+        target.setAccessible(true);
+        Object[] args =Arrays.stream(target.getParameters())
+                .map(param -> param.isAnnotationPresent(Inject.class) ?
+                        getInstance(param.getType(), param.getAnnotation(Inject.class).value()) :
+                        getInstance(param.getType())
+                )
+                .toArray();
+        try {
+            T instance = target.newInstance(args);
+            // Also resolve @inject fields additional
+            inject(clazz, instance);
+            return instance;
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private <T> Constructor<T> getTargetConstructor(Class<T> clazz) {
+        Constructor<T> zArgsConstructor = null;
+        for (Constructor<T> constructor : (Constructor<T>[]) clazz.getDeclaredConstructors()) {
+            if (constructor.isAnnotationPresent(Inject.class)) {
+                return constructor;
+            } else if (constructor.getParameterCount() == 0) {
+                zArgsConstructor = constructor;
+            }
+        }
+        return zArgsConstructor;
     }
 
     private void inject(Class<?> clazz, Object object){
